@@ -1,0 +1,2038 @@
+// Programme PCBOSS par TSAKIROPOULOS SERGE
+// Utilitaire en Mode texte 80x25
+// R‚alis‚ le: 12/12/1994
+// DŠrniŠre modif: 03/11/97
+// Test de la configuration de la M‚moire … la compilation .....
+ #include "d:\tsk\fct\fmem__.cpp" // Verifie les Erreurs du au modele de m‚moire
+
+ #pragma hdrfile 	 "d:\tsk\tsk.SYM"  // Changement du fichier entêtes précompilés.
+ #pragma -O2		// vitesse
+ #pragma -G		// vitesse du code EXE
+ #pragma -ml		// Pour les pointeurs - ModŠle de m‚moire voir Option|Compiler|Code_generation|Large(ù)
+
+ #pragma warn -par
+
+#if !defined( __STDLIB_H )
+  #include <stdlib.h>
+  #define __STDLIB_H
+#endif
+
+#if !defined( __CTYPE_H )
+ #include <ctype.h>
+ #define __CTYPE_H
+#endif
+
+#if !defined( __PROCESS_H )
+ #include <process.h>
+ #define __PROCESS_H
+#endif
+
+#if !defined( __DIR_H )
+ #include <dir.h>
+ #define __DIR_H
+#endif
+
+#if !defined( __STRING_H )
+ #include <string.h>
+ #define __STRING_H
+#endif
+
+#if !defined( __CONIO_H )
+ #include <conio.h>
+ #define __CONIO_H
+#endif
+
+#if !defined( __IO_H )
+ #include <io.h>
+ #define __IO_H
+#endif
+
+#if !defined( __STDIO_H )
+ #include <stdio.h>
+ #define __STDIO_H
+#endif
+
+ #define IGNORE  0
+ #define RETRY   1
+ #define ABORT   2
+
+#ifdef __cplusplus
+	 #define __CPPARGS ...
+#else
+	 #define __CPPARGS
+#endif
+
+// definition de constante & autre macros
+ #define MAJDMIN					1
+ #define MAJPMIN					2
+// Utiliser dans MESSAGE_ERR.H ///////////////////////////////////////////
+ #define FICHIERR				4
+///Utiliser dans FSAISIE.cpp/////////////////////////////////////////////
+ #define INIT_VAR				-1
+////////////////////////////////////////////////////////////////////////
+ #define CLS 								textbackground(BLACK);clrscr()
+ #define colorxy(x,y,color,fond) 	gotoxy(x,y);textcolor(color);textbackground(fond)
+////////////////////////////////////////////////////////////////////////
+ #define NO_DEF					  255
+ /////////////////////////////////////
+ #define CHAINE 					  1 // Erreur pour message_err
+ #define CONTINUE					  0 // Pour la fonction afficher_tableau_octet
+ #define DEBUT    				  1 // idem  					   <ÄÄÙ
+ #define SUPPRIMER  			  	  5
+ #define PAS_DE_SOURIS          2  // Pour le message d'erreur quand il n'y a pas de souris
+ #define INTERRUPTION			  3  // Pour le message quand l'utilisateur arrete la recherche
+ #define END						exit(EXIT_SUCCESS)
+ #define INIT_BOUTON				  0
+ #define OFF					 	  0
+ #define ON					 		  1
+ #define TAILLE512				50
+ #define LANCER   				666
+ #define QUITTER  				222
+ #define VALEUR   				444
+ #define INITI    				333
+ #define PREMIER_FICHIER		  0
+ #define TERMINER				  1
+ #define RECHERCHER				  2
+ #define PAGE					  0
+ #define DIRECTO				  0
+ #define FICH                NO_DEF
+ #define POURSUITE				  1
+ #define Fichier_max			1999
+ #define Repertoire_max			1999
+ #define ANNULER				22
+ #define SUPPRIMER				5
+ #define NBR_NIVEAU				20
+ #define CODE_DEL  				0x53
+
+ #define WIN_FIL				10
+ #define WIN_REP				0
+
+
+#if !defined( __FINCLUDE )
+ #include "d:\tsk\fct\finclude.h"
+ #define __FINCLUDE
+#endif
+#if !defined( __FMENU )
+ #include "d:\tsk\fct\fmenu.h"
+ #define __FMENU
+#endif
+#if !defined( __FASCII )
+ #include "d:\tsk\fct\fascii.h"
+ #define __FASCII
+#endif
+#if !defined( __FINPUTXY )
+ #include "d:\tsk\fct\finputxt.h"
+ #define __FINPUTXY
+#endif
+#if !defined( __FMESSERR )
+ #include "d:\tsk\fct\fmesserr.h"
+ #define __FMESSERR
+#endif
+#if !defined( __FEDITEUR )
+ #include "d:\tsk\fct\fediteur.h"
+ #define __FEDITEUR
+#endif
+
+#if !defined( __FMOUSE )
+#include "d:\tsk\fct\fmouse.h"
+ #define __FMOUSE
+#endif
+#if !defined( __FCADRE )
+ #include "d:\tsk\fct\fcadre.h"
+ #define __FCADRE
+#endif
+#if !defined( __FFICHIER )
+ #include "d:\tsk\fct\ffichier.h"
+ #define __FFICHIER
+#endif
+
+// Affecte le nom de symbole byte … la d‚finition de type de donn‚e unsigned char
+typedef unsigned char byte; // Define un type BYTE
+typedef unsigned int  word; // Define un type WORD
+
+static char *err_msg[] = {
+	"Support proteg‚ contre l'‚criture","unknown unit",
+	"Le Lecteur n'est pas pr‚t","commande inconnue","data error (CRC)",
+	"bad request","seek error","unknown media type",
+	"secteur non trouv‚","Plus de papier ",
+	"Ecriture impossible","Lecture du support impossible ",
+	"general failure","reserved","reserved",
+	"invalid disk change"
+};
+/*/
+/////////////////////////////////////////////////////////////////////////
+void interrupt (*old_int_09)(__CPPARGS);
+void interrupt new_int_09(__CPPARGS);
+///////////////////////////////////////////////////////////////////////////
+//*/
+ int compter_fichier(void);
+ int check_mscdex(void);
+void command_system();
+void sauver_hexa(long pointeur,long nombre_lue);
+void code_hexa(int x,int y,char touche,int position);
+void far handler(unsigned deverr, unsigned errval, unsigned far *devhdr);
+void affiche_pourcent_disk(float taille);   		// Affiche le pourcentage en bas de l'‚cran
+void cadre_OFFSET(int mode,char *nom);
+void presentation(void); 							// C'est le premier cadre du debut (c)
+void fenetre_repertoire_fix(void);
+void lecteur_indefinie(void); 						// Pour un changement de lecteur
+void lire_lecteur(char changement);								// Lit ce qu'il y a sur le lecteur en cour
+void fenetre_aide();
+void fenetre_repertoire(void);
+void fenetre_fichier(void); // affiche les fichiers dans le plus grand cadre bleue
+void menu_affichage(void);
+void menu_fichier(char nm_fichier[13],int argument);
+void aff_nbr_fichier_rep(void);
+void menu_exit_option(void);
+void system_option(void);
+void afficher_tableau_octets(int nbr_element_tableau,int mode,long offset);
+void rep_cour();
+void ecrire_hexa(long pointeur,long nombre_lue);
+void message(int afficher);
+void supprimer_fichier(void);
+void fenetre_files(int color);
+void fenetre_directory(int color);
+void hd_space(void);
+ int titre_bouton(int x,int y,char texte[60],char color,char fond,char ombre,char fond_cadre);
+ int changement_de_repertoire(void);                // dans le menu principal change le repertoire en cour
+ int fenetre_options();                         	// Menu debut ou Recherche ou position ou aide
+ int ouverture_fichier(char texte_fichier[100]);
+ int affichage_str(int code_ascii);
+ int Erreur_sur_fichier(void);
+ int fenetre_contenu(char nom_fichier[13], int argument,int mode); // retourne si le fichier est OK
+ int fenetre_contenu_ascii(char nom_fichier[13]); // retourne si le fichier est OK
+ int lire_dans_fichier(int nbr_octet);
+ int error_win();
+void screen(void);
+int recherche(void);
+ int rechercher_octet(int code[35],int taille);
+void erreur_system(void);
+
+
+// Fonction externe ///////////////////////////////////////////////////
+extern  int edit(char *nom_fichier);
+extern void modif_fond(char x,char y,int longueur,char attribut,char type);
+extern float espace_disk_libre_pourcent(int lecteur_disk); // retourne l'espace disk en pourcent
+extern void fond(int mode);
+extern void space(int l,int color);         // Surcharge de fonction space
+extern void space(int x,int y,int l,int color);
+extern void winp(int x,int y,int x1,int y1,int color_texte,int color_fond,int winp_color,char *texte);
+extern void bouton_xyl(int x,int y,int l);
+extern void decor_fond_(void);  // deco en ²²² > white MODIF FOND Õ
+extern  int hexa(char hexa_code_1,char hexa_code_2);
+extern void color(unsigned char x,unsigned char y);
+extern void right(unsigned char texte_source[255],unsigned char texte_objet[255],int taille_du_source,int emplacement);
+extern void left(unsigned char *texte_source,unsigned char *texte_objet,int emplacement,int type_de_fichier);
+extern void titre(int x,int y,int color,int fond,int color2,int fond2,char *titre,int appuyer);
+// Dans MESSERR.H ----------------------------------------------------------
+extern int message_err(int type);
+// Dans FCADRE.H -----------------------------------------------------------
+extern void locatext(char x,char y,char *chaine,char attribut);    // ne fonctionne que pour un mode  80x25
+extern void locatcar(char x,char y,char chaine,char attribut);
+extern void cadre_plein(byte x,byte y,byte x1,byte y1,byte type_trait,byte color,byte color_fond,byte ombre);     // dessine le cadre
+// Dans FINPUTXY.H -------------------------------------------------------
+extern  int input(int x,int y,int nbr_lettre_saisie,char texte[132],int color);
+// Dans FASCII.H -----------------------------------------------------------
+extern void table_ascii(void);
+extern void init_ascii();  								// Init la cr‚ation des codes ASCII
+extern void definition_ascii(char table[16],char ascii);   //
+/* Dans FINCLUD.H ----------------------------------------------------------
+	rien -------------------------------------------------------------------------*/
+// Dans FMOUSE.H ---------------------------------------------------------
+extern  int port_souris(void);
+extern char irq_souris(void);
+// Dans FFICHIER.H ---------------------------------------------------------
+extern int recherche_nbr_lecteur(void);
+extern void ass_vert(int x,int y,int longueur,long nbr,int emplacement,int color);
+extern unsigned int taille_cluster(void);
+
+// les donn‚es
+extern 	byte tree[Repertoire_max][25];
+
+/* augmente la taille de la pile. La déclaration doit ˆtre situ‚e */
+/* en dehors de la zone de donn‚es globale. */
+
+	 extern unsigned _stklen = 50000U;
+
+	extern char fichier_default[6];
+	extern int compteur;
+
+	extern int	nbr_fichier,nbr_repertoire,nbr_lecteur_logique,nbr_lecteur_totaux;
+			struct liste_repertoire	{
+					char repertoire[13];
+//					char niveau;
+			};
+	extern	struct	liste_repertoire num_repertoire[Repertoire_max];
+
+	struct menu	{
+		int x;
+		int y;
+		unsigned char largeur;
+		unsigned char hauteur;
+		unsigned char nbr_barres;
+		unsigned char type_de_cadre;
+		unsigned char couleur_barre_ecriture;
+		unsigned char couleur_barre_fond;
+		unsigned char couleur_cadre_ecriture;
+		unsigned char couleur_cadre_fond;
+		unsigned char couleur_texte;
+		unsigned char lettre_surbrillance;
+		char *string[40];
+	};
+	extern struct menu base_menu;
+
+	struct liste_fichier	{
+		char files[13];	// nom du fichier 13 = 8 char + 1 "." + 3 char extention
+		unsigned long	taille;  // + 1 de code de sp‚cification
+		char attribut;
+	};
+	extern  struct	liste_fichier num_fichier[Fichier_max];
+
+	struct  fichier_bit_field {
+		  word marque_		: 1;
+	} ;
+
+	extern int place_r,place_f; // Pour les repertoires & fichiers
+	extern long ficompt;		// Files
+
+//////////////////////////////////////////////////////////////////////
+// Variable PCBOSS ///////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+
+	char sauve_error[4000];
+	long nbr_de_char_lus=0,nbr_charger=0;
+	int cplx=0; // pour chdir
+	char fin_fichier=0;
+
+	FILE *in; // Structure de contr“le des flux
+	byte sauvegarde_octet[280]; //sauve 256 octets lus pour la modif
+
+	int emplacement=0,final=0;
+
+	static int poscour=1,vers_bas=0;
+
+// Structure pour la s‚lection des fichiers
+	struct fichier_bit_field fichier_[Fichier_max];
+	struct fichier_bit_field Num_,Cap,Scr;
+
+	int fenfix=31,placr=0;
+	long taille_files=0;
+	int position_fenetre=WIN_FIL;
+	int nbr_lus_dans_tableau=0;
+	char nom_en_cour[13];
+	long cluster=0;
+
+void main(char argc, char **argv)
+{
+	char nom_fichier[13];
+	int argument=0; // Pour les parametres
+	int choix_menu,tmp=0,value=0;
+	char repertoire_default[3]="\\";
+	char nom_fichier_backup[13],clavier;
+	char police=-1;
+	char rep[80];
+/*
+	old_int_09=getvect(9); // Renvoie l'adresse contenue dans le vecteur d'interruption
+	setvect(9,new_int_09);
+//*/
+//   initialise le marqueur des fichiers
+
+	_harderr(handler); // Etablit un gestionnaire des erreurs mat‚rielles.
+	screen(); // Mode video standart 80x25x16
+
+	init_mem_fichier();  // Vide tous les noms des fichiers de la memoire
+	init_mem_repertoire();  // Vide tous les noms des repertoire de la memoire
+
+	fond(0);			// D‚finition des 15 couleurs du fond
+
+	table_ascii();		// F1 , Cr‚ation des nouveau char ASCII
+
+	color(7,0);
+	if (check_mscdex()==0) printf("\nPas de CD ROM"); else printf("\nCD ROM trouv‚");
+
+	if ((police=charger_table("long.als"))!=1)    // Charge la police de caractere ALES
+	{
+		if ((police=charger_table("long.als"))!=1)		{
+			if ((police=charger_table("long.als"))!=1)		{
+				police=charger_table("long.als");
+			}
+		}
+	}
+
+	if (police==0)	{
+		color(7,0);
+		cprintf("\n\rPolice de caractere par defaut charger\n\r");
+	}
+
+	 // Test la presence d'une souris
+		if (mouse_presente()==MOUSE_ABSENTE) {
+			message_err(PAS_DE_SOURIS);
+		}
+		else
+		{
+			cprintf("gestionnaire de souris OK .\n\r");
+			tmp=port_souris();
+			color(11,0);cprintf("Connexion ");
+			color(14,0);
+			if (tmp==1) cprintf("BUS");
+			if (tmp==2) cprintf("SERIAL");
+			if (tmp==3) cprintf("IN PORT");
+			if (tmp==4) cprintf("PS/2");
+			if (tmp==5) cprintf("HP");
+			color(12,0);
+			cprintf(" irq %d",irq_souris());
+		}
+		check_mscdex();
+
+	if (argc!=2) // v‚rifie la syntaxe
+	{
+		locatext(1,25,"                                                             ZeCrusher",1+16*8);
+		locatext(71,25," Ó×ô ",14+16*8);
+
+		locatext(56,25,"ÄÄÍÍÍ",11+16*8);locatext(76,25,"ÍÍÄÄ ",11+16*8);
+		presentation();
+
+	}
+	strcpy(fichier_default,"*.*"); // cette chaine de 3 caracteres est dans FFICHIER
+	init_souris();cache_souris();
+
+	if (argc==2)	{
+		argument=argc;
+		fenetre_contenu(argv[1],argument,1);
+	}
+
+//	hd_space();
+
+	decor_fond_(15,7);
+	locatext(34,1,"P C B O S S",11+16*1);
+	locatext(76,25," Ó×ô ",14+16*9);
+
+	space(1,2,80,BLACK+16*WHITE);
+	space(1,3,80,BLACK+16*BLUE); // Ce sont les 2 barres de couleur du haut de l'ecran
+	bar_menu(1,2,BLACK,WHITE,RED,"    _Fichier    _Extention    ");//_Aide");
+
+	debut_traitement(10,10); // Affiche le mot PAUSE dans un cadre
+		nbr_fichier=recherche_fichier(fichier_default);
+//		classer_nom_fichier();
+		nbr_repertoire=recherche_repertoire(repertoire_default);
+	fin_traitement(); // Effacement du mot pause
+	affiche_pourcent_disk(espace_disk_libre_pourcent(0));// retourne l'espace disk en pourcentage
+
+	fenetre_directory(7);
+	fenetre_files(15);
+	// repertoire
+	ass_vert(28,6,14,nbr_repertoire,place_r,7+16*1);
+	ass_vert(78,6,14,nbr_fichier,place_f,15+16*1);
+	locatext(3,3," A: ",WHITE+16*4);locatext(8,3," C: ",WHITE+16*4);locatext(13,3," ?: ",WHITE+16*4);
+	aff_nbr_fichier_rep();
+	rep_cour();
+	locatext(fenfix+5,6,num_fichier[PREMIER_FICHIER].files,WHITE+16*12);
+	choix_menu=0;
+	place_r=0;// initialise le haut du tableau
+	place_f=0; // de mˆme pour les fichiers , ce qui indique le debut de tableau
+
+
+	do
+	{
+
+		montre_souris();
+
+		bouton = ZERO_BOUTON_APPUYER ; // indique qu'aucun bouton n'est appuyer
+		etat_souris();
+
+		valeur_xxreel=((posx/8)+1); // Ici il ne faut pas 640 x 480 d'ou / 8)+1
+		valeur_yyreel=((posy/8)+1);
+
+
+		value = peek(0x0040, 0x0017);
+		if (value&8) {
+			cache_souris();
+			strcpy(nom_fichier_backup,num_fichier[place_f+vers_bas].files);
+			menu_fichier(nom_fichier_backup,argument);
+		}
+
+// Partie CLAVIER qui utilise les 2 touches flech‚s
+
+		if (bioskey(1)!=0) // Touche Sp‚cial
+		{
+			cache_souris();
+			clavier=toupper(getch());
+			if ((clavier==32)&&(place_f+vers_bas<nbr_fichier))
+			{
+				if (fichier_[place_f+vers_bas].marque_==OFF)
+					fichier_[place_f+vers_bas].marque_=ON;
+				else
+					fichier_[place_f+vers_bas].marque_=OFF;
+
+				if (place_f<(nbr_fichier-16))	{
+					place_f++;
+				}
+				else	{
+					if (vers_bas<15) vers_bas++;
+				}
+
+				fenetre_fichier();
+				compter_fichier();
+
+			}
+			if (clavier=='-')	{
+				for(int es=0;es<nbr_fichier;es++)
+					fichier_[es].marque_=OFF;
+					fenetre_fichier();compter_fichier();
+			}
+			if (clavier=='*')	{
+				for(int es=0;es<nbr_fichier;es++)
+					fichier_[es].marque_=ON;
+					fenetre_fichier();
+					compter_fichier();
+			}
+			if ((clavier==13)&&(position_fenetre==WIN_REP))	{
+				cache_souris();
+				for (int d=0;d<Fichier_max;d++) fichier_[d].marque_=OFF;
+				changement_dir(place_r+placr);// Changement du repertoire actif
+				nbr_repertoire=changement_de_repertoire(); // Retourne le nombre de repertoire
+				place_f=vers_bas=0;
+				locatext(fenfix+5,6,num_fichier[PREMIER_FICHIER].files,WHITE+16*12);
+				if (strlen(tree[placr+place_r])>18) {
+					locatext(16,placr+6,num_repertoire[place_r+placr].repertoire,79);
+				}
+				else {
+					locatext(3+strlen(tree[place_r+placr]),placr+6,num_repertoire[place_r+placr].repertoire,79);
+				}
+				montre_souris();
+			}
+			if (clavier=='C')	{
+				place_r=place_f=vers_bas=placr=0;
+				cache_souris();
+				changement_lecteur(LECTEUR_C);
+				lire_lecteur(DIRECTO);
+				nbr_repertoire=changement_de_repertoire();
+				montre_souris();
+			}
+
+			if (clavier=='A')			{
+				place_r=place_f=vers_bas=placr=0;
+				cache_souris();
+				changement_lecteur(LECTEUR_A);
+				lire_lecteur(DIRECTO);
+				nbr_repertoire=changement_de_repertoire();
+				montre_souris();
+			}
+
+			if (clavier=='?')
+			{
+				cache_souris();
+				locatext(13,3," ?: ",WHITE+16*RED);
+				montre_souris();
+				lecteur_indefinie();
+				locatext(3,3," A: ",WHITE+16*4);
+				locatext(8,3," C: ",WHITE+16*4);
+				locatext(13,3," ?: ",WHITE+16*4);
+			}
+			if (clavier==27)  menu_exit_option();
+			if (clavier=='E') menu_affichage();
+			if (clavier=='F')	{
+				cache_souris();
+				strcpy(nom_fichier_backup,num_fichier[place_f+vers_bas].files);
+				menu_fichier(nom_fichier_backup,argument);
+			}
+			if (clavier=='\x0') // test une touche LIGHT ' 0 + le code ASCII '
+			{
+				clavier=getch();   // test des touches fl‚che
+				ass_vert(28,6,14,nbr_repertoire,place_r,3+16*1);
+				ass_vert(78,6,14,nbr_fichier,place_f,3+16*1);
+
+				if (clavier==83) { // Effacement des fichiers
+					supprimer_fichier();
+				}
+
+				if ((clavier==75)&&(position_fenetre!=WIN_REP)) {
+					fenetre_directory(15);
+					fenetre_files(7);
+					position_fenetre=WIN_REP;
+				}
+				if ((clavier==77)&&(position_fenetre!=WIN_FIL))	{
+					fenetre_directory(7);
+					fenetre_files(15);
+					position_fenetre=WIN_FIL;
+				}
+				if ((clavier==80)&&(position_fenetre==WIN_REP))//81)
+				{
+					if (place_r<(nbr_repertoire-16)) {
+						place_r++;
+					}
+					else {
+						if (placr<15) placr++;
+					}
+					cache_souris();
+					fenetre_repertoire();
+					for (int d=0;d<Fichier_max;d++) fichier_[d].marque_=OFF;
+					changement_dir(place_r+placr);// Changement du repertoire actif
+					nbr_repertoire=changement_de_repertoire(); // Retourne le nombre de repertoire
+					place_f=vers_bas=0;
+					locatext(fenfix+5,6,num_fichier[PREMIER_FICHIER].files,WHITE+16*12);
+
+					if (strlen(tree[placr+place_r])>18) {
+						locatext(16,placr+6,num_repertoire[place_r+placr].repertoire,79);
+					}
+					else {	locatext(3+strlen(tree[place_r+placr]),placr+6,num_repertoire[place_r+placr].repertoire,79);
+					}
+
+					montre_souris();
+				}
+				if ((clavier==72)&&(position_fenetre==WIN_REP))//73)
+				{
+					if (place_r>0)	{
+						place_r--;
+					}
+					else	{
+						if (placr>0) placr--;
+					}
+					cache_souris();
+					fenetre_repertoire();
+					for (int d=0;d<Fichier_max;d++) fichier_[d].marque_=OFF;
+					changement_dir(place_r+placr);// Changement du repertoire actif
+					nbr_repertoire=changement_de_repertoire(); // Retourne le nombre de repertoire
+					place_f=vers_bas=0;
+					locatext(fenfix+5,6,num_fichier[PREMIER_FICHIER].files,WHITE+16*12);
+
+					if (strlen(tree[placr+place_r])>18) {
+						locatext(18,placr+6,num_repertoire[place_r+placr].repertoire,79);
+					}
+					else {
+						locatext(3+strlen(tree[place_r+placr]),placr+6,num_repertoire[place_r+placr].repertoire,79);
+					}
+//					locatext(3+strlen(tree[place_r+placr]),placr+6,num_repertoire[place_r+placr].repertoire,79);
+					montre_souris();
+
+				}
+
+				if ((clavier==80)&&(strcmp(num_fichier[place_f+vers_bas+1].files," ")!=0)&&(position_fenetre==WIN_FIL))
+				{ // increment du curseur vers le bas
+					if (place_f<(nbr_fichier-16))	{
+						place_f++;
+					}
+					else	{
+						if (vers_bas<15) vers_bas++;
+					}
+				}
+				if ((clavier==72)&&(position_fenetre==WIN_FIL))
+				{ // Vers le haut
+					if (place_f>0)	{
+						place_f--;
+					}
+					else	{
+						if (vers_bas>0) vers_bas--;
+					}
+				}
+				if (tmp != vers_bas+place_f)
+				{
+					fenetre_fichier();
+					locatext(fenfix+5,6+vers_bas,num_fichier[place_f+vers_bas].files,WHITE+16*12);
+					strcpy(nom_fichier_backup,num_fichier[place_f+vers_bas].files);
+				 }
+				}
+				montre_souris();
+		}
+		tmp=place_f+vers_bas; // Pour empecher le sintillement
+
+		if (fichier_[place_f+vers_bas].marque_==ON)
+			locatext(fenfix+5,6+vers_bas,num_fichier[place_f+vers_bas].files,YELLOW+16*2);
+		else
+			locatext(fenfix+5,6+vers_bas,num_fichier[place_f+vers_bas].files,WHITE+16*12);
+
+// En sous fonction cela ralentie le programme
+		if ((bouton==BOUTON_GAUCHE)&&(valeur_yyreel==25)&&(valeur_xxreel>75))
+		{
+			if (found_file(nom_fichier,rep,"*.als","  Choisir une Police Dos (ALes)")==1) {
+					charger_table(nom_fichier);
+					table_ascii();		// F1 , Cr‚ation des nouveau char ASCII
+			}
+			debut_traitement(10,10); // Affiche le mot PAUSE dans un cadre
+				nbr_fichier=recherche_fichier(fichier_default);
+		//		classer_nom_fichier();
+				nbr_repertoire=recherche_repertoire(repertoire_default);
+			fin_traitement(); // Effacement du mot pause
+			affiche_pourcent_disk(espace_disk_libre_pourcent(0));// retourne l'espace disk en pourcentage
+			fenetre_directory(7);
+			fenetre_files(15);
+			// repertoire
+			ass_vert(28,6,14,nbr_repertoire,place_r,7+16*1);
+			ass_vert(78,6,14,nbr_fichier,place_f,15+16*1);
+			locatext(3,3," A: ",WHITE+16*4);locatext(8,3," C: ",WHITE+16*4);locatext(13,3," ?: ",WHITE+16*4);
+			aff_nbr_fichier_rep();
+			rep_cour();
+			locatext(fenfix+5,6,num_fichier[PREMIER_FICHIER].files,WHITE+16*12);
+			choix_menu=0;
+			place_r=0;// initialise le haut du tableau
+			place_f=0; // de mˆme pour les fichiers , ce qui indique le debut de tableau
+
+		}
+		if ((bouton==BOUTON_GAUCHE)&&(valeur_yyreel>5)&&(valeur_yyreel<22)&&(valeur_xxreel<26)&&(valeur_xxreel>2)&&(strcmp(num_repertoire[place_r+(valeur_yyreel-6)].repertoire," ")))
+		{
+			cache_souris();
+			for (int d=0;d<Fichier_max;d++) fichier_[d].marque_=OFF;
+			relacher_bsgauche();
+			changement_dir(place_r+(valeur_yyreel-6));// Changement du repertoire actif
+			nbr_repertoire=changement_de_repertoire(); // Retourne le nombre de repertoire
+			place_f=vers_bas=0;
+			locatext(fenfix+5,6,num_fichier[PREMIER_FICHIER].files,WHITE+16*12);
+			locatext(3+strlen(tree[place_r+(valeur_yyreel-6)]),valeur_yyreel,num_repertoire[place_r+(valeur_yyreel-6)].repertoire,79);
+			montre_souris();
+			placr=valeur_yyreel-6;
+		}
+
+		if ((bouton==BOUTON_GAUCHE)&&(valeur_yyreel==22)&&(valeur_xxreel<11)&&(valeur_xxreel>4))
+		{
+			cache_souris();
+			for (int d=0;d<Fichier_max;d++) fichier_[d].marque_=OFF;
+			relacher_bsgauche();
+			chdir("\\"); // Racine
+			nbr_repertoire=changement_de_repertoire(); // Retourne le nombre de repertoire
+			montre_souris();
+			place_f=vers_bas=0;locatext(fenfix+5,6,num_fichier[PREMIER_FICHIER].files,WHITE+16*12);
+
+		}
+
+		if ((bouton==BOUTON_DROIT)&&(valeur_yyreel>5)&&(valeur_yyreel<22)&&(valeur_xxreel<78)&&(valeur_xxreel>fenfix-1)&&(strcmp(num_fichier[place_f+(valeur_yyreel-6)].files," ")!=0))
+		{
+			cache_souris();
+			strcpy(nom_fichier_backup,num_fichier[place_f+(valeur_yyreel-6)].files);
+/*
+			if (system(editeur_extern)==-1) {
+				erreur_system();
+			}
+*/
+			edit(nom_fichier_backup);
+		}
+		if ((bouton==BOUTON_GAUCHE)&&(valeur_yyreel>5)&&(valeur_yyreel<22)&&(valeur_xxreel<78)&&(valeur_xxreel>fenfix-1)&&(strcmp(num_fichier[place_f+(valeur_yyreel-6)].files," ")!=0))
+		{
+			cache_souris();
+			strcpy(nom_fichier_backup,num_fichier[place_f+(valeur_yyreel-6)].files);
+			vers_bas=(valeur_yyreel-6);
+				if (fichier_[poscour].marque_==OFF)
+					fichier_[poscour].marque_=ON;
+						else
+					fichier_[poscour].marque_=OFF;
+			for(int h=0;h<16;h++)
+			{
+				if (fichier_[place_f+h].marque_==ON)
+				{
+					locatext(fenfix+5,6+h,num_fichier[place_f+h].files,12+16*1);
+					locatext(fenfix+1,6+h,"û ",10+16*1);
+				}
+				else
+				{
+					locatext(fenfix+5,6+h,num_fichier[place_f+h].files,31);
+					if (num_fichier[h+place_f].files[0]!=' ')
+					{
+						if ((strirech(num_fichier[h+place_f].files,".EXE")!=-1)||(strirech(num_fichier[h+place_f].files,".BAT")!=-1)||(strirech(num_fichier[h+place_f].files,".COM")!=-1))						{
+							locatext(fenfix+1,6+h,"Öü",7+16*1);
+						}
+						else						{
+							locatext(fenfix+1,6+h,"Ôý",7+16*1);
+						}
+					}
+				}
+			}
+			if (fichier_[place_f+(valeur_yyreel-6)].marque_==ON)
+				locatext(fenfix+5,valeur_yyreel,num_fichier[place_f+(valeur_yyreel-6)].files,YELLOW+16*2);
+			else
+				locatext(fenfix+5,valeur_yyreel,num_fichier[place_f+(valeur_yyreel-6)].files,WHITE+16*12);
+			relacher_bsgauche();
+			compter_fichier();
+			montre_souris();
+
+		}
+
+		poscour=place_f+(valeur_yyreel-6);
+
+// 	S‚lection de l'affichage *.*, *.com 	ect ...
+		if ((bouton==BOUTON_GAUCHE)&&(valeur_yyreel==2)&&(valeur_xxreel<12)&&(valeur_xxreel>4))  {
+			strcpy(nom_fichier_backup,num_fichier[place_f+vers_bas].files);
+			relacher_bsgauche();cache_souris();
+			locatext(4,2," Fichier ",15+16*12);
+			menu_fichier(nom_fichier_backup, argument);
+			bar_menu(1,2,BLACK,WHITE,RED,"    _Fichier    _Extention    ");//_Aide");
+		}
+		if ((bouton==BOUTON_GAUCHE)&&(valeur_yyreel==2)&&(valeur_xxreel<25)&&(valeur_xxreel>15)) {
+			relacher_bsgauche();cache_souris();
+			locatext(15,2," Extention ",15+16*12);
+			menu_affichage();
+			bar_menu(1,2,BLACK,WHITE,RED,"    _Fichier    _Extention    ");//_Aide");
+		}
+
+// S‚lection du lecteur A: B: C: ect ...........
+		if ((bouton==BOUTON_GAUCHE)&&(valeur_yyreel==3)&&(valeur_xxreel<7)&&(valeur_xxreel>2))
+		{
+			place_r=place_f=vers_bas=placr=0;
+			cache_souris();
+			changement_lecteur(LECTEUR_A);
+			lire_lecteur(DIRECTO);
+			nbr_repertoire=changement_de_repertoire();
+			relacher_bsgauche();
+			montre_souris();
+
+		}
+		if ((bouton==BOUTON_GAUCHE)&&(valeur_yyreel==3)&&(valeur_xxreel<12)&&(valeur_xxreel>7))
+		{
+			place_r=place_f=vers_bas=0;
+			cache_souris();
+			changement_lecteur(LECTEUR_C);
+			lire_lecteur(DIRECTO);
+			nbr_repertoire=changement_de_repertoire();
+			relacher_bsgauche();
+			montre_souris();
+		}
+		if ((bouton==BOUTON_GAUCHE)&&(valeur_yyreel==3)&&(valeur_xxreel<17)&&(valeur_xxreel>12))
+		{
+			cache_souris();locatext(13,3," ?: ",WHITE+16*LIGHTRED);
+			relacher_bsgauche();
+			montre_souris();lecteur_indefinie();
+			locatext(3,3," A: ",WHITE+16*4);
+			locatext(8,3," C: ",WHITE+16*4);locatext(13,3," ?: ",WHITE+16*4);
+		}
+
+		if ((bouton==BOUTON_GAUCHE)&&(valeur_xxreel==28)&&(valeur_yyreel==21))
+		{   delay(20);
+			if (place_r<(nbr_repertoire-16)) {	place_r++;
+				fenetre_repertoire();
+			}
+		ass_vert(28,6,14,nbr_repertoire,place_r,3+16*1);
+		}
+		if ((bouton==BOUTON_GAUCHE)&&(valeur_xxreel==28)&&(valeur_yyreel==6))
+		{   delay(20);
+			if (place_r>0) {
+				place_r--;
+				fenetre_repertoire();
+			}
+			ass_vert(28,6,14,nbr_repertoire,place_r,3+16*1);
+		}
+
+		if ((bouton==BOUTON_GAUCHE)&&(valeur_xxreel==78)&&(valeur_yyreel==6))
+		{
+			if (place_f>0)  {
+				place_f--;	fenetre_fichier();
+			}
+			ass_vert(78,6,14,nbr_fichier,place_f,3+16*1);
+		}
+		if ((bouton==BOUTON_GAUCHE)&&(valeur_xxreel==78)&&(valeur_yyreel==21))
+		{
+			if (place_f<(nbr_fichier-16)) {
+				place_f++;	fenetre_fichier();
+			}
+			ass_vert(78,6,14,nbr_fichier,place_f,3+16*1);
+		}
+		if  (bouton==BOUTON_GAUCHE_DROIT) {
+			menu_exit_option();
+		}
+
+	}	//****************  fin de la grande boucle debut ligne ->
+	while(choix_menu==0);
+	_setcursortype(_SOLIDCURSOR);
+	PAUSE;
+	END;
+
+}
+void presentation(void)
+{
+	cadre_plein(24,7,56,11,0,WHITE,WHITE,1);  // cadre rep
+	locatext(24,7,"           P C B O S S           ",WHITE+16*LIGHTRED);
+	titre(36,9,YELLOW,1,DARKGRAY,WHITE, " < OK > ",0);
+	bouton_xyl(36,9,8); // Gestion du Bouton OK
+	titre(36,9,YELLOW,1,DARKGRAY,WHITE, " < OK > ",1);
+}
+
+int changement_de_repertoire()
+{
+
+	place_f=0;
+
+	lire_lecteur(FICH);
+
+	window(3,6,fenfix-4,21);
+		color(15,1);clrscr();
+	window(1,1,80,25);
+
+	window(fenfix,6,77,21);
+		color(15,1);clrscr();
+	window(1,1,80,25);
+
+	aff_nbr_fichier_rep();
+
+	fenetre_repertoire();
+	fenetre_fichier();
+	rep_cour();
+
+	return (nbr_repertoire);
+
+}
+void fenetre_repertoire_fix(void)
+{
+
+	for (int es=0;es<16;es++)	{
+		if (strlen(tree[es+place_r])>16)
+			tree[es+place_r][16]='\x0';
+		locatext(3,6+es,tree[es+place_r],10+16*1);
+		locatext(3+strlen(tree[es+place_r]),6+es,num_repertoire[place_r+es].repertoire,31);
+	}
+}
+void fenetre_repertoire()
+{
+
+	window(3,6,fenfix-4,21);
+	color(15,1);clrscr();
+
+	for (int es=0;es<16;es++)	{
+		if (strlen(tree[es+place_r])>16)	tree[es+place_r][16]='\x0';
+			locatext(3,6+es,tree[es+place_r],10+16*1);
+			locatext(3+strlen(tree[es+place_r]),6+es,num_repertoire[place_r+es].repertoire,31);
+	}
+	if (nbr_repertoire==0) locatext(6,6,"Pas de r‚pertoire. ",11+16*1);
+
+	window(1,1,80,25);
+
+}
+
+void fenetre_fichier()
+{
+	window(fenfix,6,77,21);   // Effacement de tous les fichiers present dans
+		color(15,1);clrscr(); // le cadre
+	window(1,1,80,25);
+
+	for(int t=0;t<16;t++)
+	{
+		if (fichier_[t+place_f].marque_==ON)
+		{
+			locatext(fenfix+5,6+t,num_fichier[t+place_f].files,12+16*1);
+			locatext(fenfix+1,6+t,"û ",10+16*1);
+		}
+		else
+		{
+			locatext(fenfix+5,6+t,num_fichier[t+place_f].files,31);
+			if (num_fichier[t+place_f].files[0]!=' ')
+			{
+				if ((strirech(num_fichier[t+place_f].files,".EXE")!=-1)||(strirech(num_fichier[t+place_f].files,".BAT")!=-1)||(strirech(num_fichier[t+place_f].files,".COM")!=-1))				{
+					locatext(fenfix+1,6+t,"Öü",7+16*1);
+				}
+				else	{
+						locatext(fenfix+1,6+t,"Ôý",7+16*1);
+				}
+			}
+		}
+
+			if (num_fichier[t+place_f].taille>0)
+			{
+				gotoxy(50,6+t);color(YELLOW,BLUE);
+				cprintf("%ld",(long) num_fichier[t+place_f].taille);
+				switch (num_fichier[t+place_f].attribut)
+				{
+					case 0:  locatext(65,6+t,"....",31);break;
+					case 1:  locatext(65,6+t,"...R",31);break;
+					case 2:  locatext(65,6+t,"H...",31);break;
+					case 3:  locatext(65,6+t,"H..R",31);break;
+					case 4:  locatext(65,6+t,".S..",31);break;
+					case 5:  locatext(65,6+t,".S.R",31);break;
+					case 7:  locatext(65,6+t,"HS.R",31);break;
+					case 32: locatext(65,6+t,"..A.",31);break;
+					case 33: locatext(65,6+t,"..AR",31);break;
+					case 34: locatext(65,6+t,"H.A.",31);break;
+					case 35: locatext(65,6+t,"H.AR",31);break;
+					case 36: locatext(65,6+t,".SA.",31);break;
+					case 39: locatext(65,6+t,"HSAR",31);break;
+					case 38: locatext(65,6+t,"HS..",31);break;
+				}
+		}
+	}
+	if (nbr_fichier==0) locatext(38,6,"Pas de fichier . ",11+16*1);
+	if ((nbr_repertoire==0)&&(nbr_fichier==0)) {
+		locatext(38,7,"Ce lecteur ne possede pas de donn‚es",11+16*1);
+		locatext(38,9,"Pressez '?' pour la liste des ",7+16*1);
+		locatext(38,10,"des diff‚rents lecteur disponible",7+16*1);
+
+	}
+	taille_files=0;
+	for (int i=0;i<nbr_fichier;i++)
+		taille_files+=(long) num_fichier[i].taille;
+	gotoxy(63,25);color(0,7);
+	cprintf("           ");
+	gotoxy(63,25);color(BLACK,7);
+	cprintf("%5.2f",(float)taille_files/1048576L);
+
+}
+void lecteur_indefinie()
+{
+	int resultat_menu;
+	int nbr_lecteur=0;
+	int taille=0;
+
+	byte *str_disk[26]={" _A: ÑÒú "," _B: ÑÒú "," _C: ÏÐµ "," _D: ÏÐµ "," _E: ÏÐµ "," _F: ÏÐµ "," _G: ÏÐµ ",
+						" _H: ÏÐµ "," _I: ÏÐµ "," _J: ÏÐµ "," _K: ÏÐµ "," _L: ÏÐµ "," _M: ÏÐµ "," _N: ÏÐµ ",
+						" _O: ÏÐµ "," _P: ÏÐµ "," _Q: ÏÐµ "," _R: ÏÐµ "," _S: ÏÐµ "," _T: ÏÐµ "," _U: ÏÐµ ",
+						" _W: ÏÐµ "," _X: ÏÐµ "," _Y: ÏÐµ "," _Z: ÏÐµ " };
+
+
+	nbr_lecteur=recherche_nbr_lecteur();
+
+	 if (nbr_lecteur>10) taille=10; else taille=nbr_lecteur;
+
+
+	resultat_menu=menu_der(12,4,9,taille+1,nbr_lecteur+1,SIMPLE,WHITE,LIGHTRED,DARKGRAY,11,BLACK,BLUE,str_disk);
+
+	if (resultat_menu!=PAS_DE_CHOIX)
+	{
+		place_r=place_f=vers_bas=placr=0;
+		changement_lecteur(resultat_menu);
+		lire_lecteur(DIRECTO);
+		nbr_repertoire=changement_de_repertoire();
+		rep_cour();
+		for (int d=0;d<Fichier_max;d++) fichier_[d].marque_=OFF;
+		fenetre_fichier();
+		fenetre_repertoire();
+	}
+}
+void lire_lecteur(char changement)
+{
+	debut_traitement(10,10);
+	for (int d=0;d<Fichier_max;d++) fichier_[d].marque_=OFF;
+		init_mem_fichier();  // Vide tous les noms des fichiers de la memoire
+
+		if (changement==0) {
+				init_mem_repertoire();//  Vide tous les noms des repertoire de la memoire
+				nbr_repertoire=recherche_repertoire("\\");     // Chargement des repertoires
+		}
+
+		nbr_fichier=recherche_fichier(fichier_default); // Chargement fichiers
+
+	fin_traitement(); /// Effacement  de la fenetre pause
+	affiche_pourcent_disk(espace_disk_libre_pourcent(0));//getdisk()+1); // retourne l'espace disk en pourcent
+}
+void menu_affichage(void)
+{
+	int resultat_menu;
+
+	byte *str_extention[5]={"  _*.*    ","  *._BAT  ","  *._COM  ","  *._EXE  ","  *._SYS  "};
+
+	resultat_menu=menu_der(16,3,10,7,6,SIMPLE,WHITE,LIGHTRED,DARKGRAY,LIGHTCYAN,BLACK,RED,str_extention);
+	bouton=ZERO_BOUTON_APPUYER;
+    bar_menu(1,2,BLACK,WHITE,RED,"    _Fichier    _Extention    ");//_Aide");
+
+	if (resultat_menu==1) { strcpy(fichier_default,"*.*");lire_lecteur(FICH);place_f=vers_bas=0;fenetre_fichier();}
+	if (resultat_menu==2) { strcpy(fichier_default,"*.BAT");lire_lecteur(FICH);place_f=vers_bas=0;fenetre_fichier();}
+	if (resultat_menu==3) { strcpy(fichier_default,"*.COM");lire_lecteur(FICH);place_f=vers_bas=0;fenetre_fichier();}
+	if (resultat_menu==4) { strcpy(fichier_default,"*.EXE");lire_lecteur(FICH);place_f=vers_bas=0;fenetre_fichier();}
+	if (resultat_menu==5) { strcpy(fichier_default,"*.SYS");lire_lecteur(FICH);place_f=vers_bas=0;fenetre_fichier();}
+	aff_nbr_fichier_rep();
+}
+void menu_fichier(char nm_fichier[13],int argument)
+{
+	int resultat_menu=0;
+
+	byte *str_fichier[11]  ={" _Editeur hexadecimal"," Editeur _Ascii       D Mouse","ÿ"," _Supprimer             Suppr","ÿ"," _Espace libre sur disque","ÿ"," _Quitter "};
+
+//	 bar_menu(1,2,BLACK,WHITE,RED,"    _Fichier    _Extention    ");//_Aide");
+	//				       type  cadre Ä¿ coulbar ¿  ¿   Úcoulcadre¿  Ú texte  Ú lettre
+	fin_fichier=0; // initialise la fin du fichier pour l'affichage
+	resultat_menu=menu_der(5,3,30,9,9,SIMPLE,WHITE,LIGHTRED,DARKGRAY,LIGHTCYAN,BLACK,RED,str_fichier);
+	bouton=ZERO_BOUTON_APPUYER;
+	 bar_menu(1,2,BLACK,WHITE,RED,"    _Fichier    _Extention    ");//_Aide");
+
+	if (resultat_menu==1) fenetre_contenu(nm_fichier,argument,0);
+	if (resultat_menu==2) edit(nm_fichier);
+	if (resultat_menu==4) supprimer_fichier();
+	if (resultat_menu==6) hd_space();
+	if (resultat_menu==8) menu_exit_option();
+
+}
+
+void aff_nbr_fichier_rep(void)
+{
+	locatext(27,3,"                                                ",BLACK+16*BLUE);
+	gotoxy(27,3);
+	color(14,1);
+	if (nbr_repertoire>1)	{
+		cprintf("%d R‚pertoires",nbr_repertoire);
+	}
+	else	{
+		cprintf("%d R‚pertoire",nbr_repertoire);
+	}
+	gotoxy(46,3);
+	if (nbr_fichier>1)	{
+		cprintf("%d Fichiers   ",nbr_fichier);
+	}
+	else {
+		cprintf("%d Fichier    ",nbr_fichier);
+	}
+
+	color(YELLOW,BLUE);
+	gotoxy(61,3);cprintf("Trie %s ",fichier_default);
+}
+int fenetre_options()
+{
+	int resultat_menu; // initialise  le resultat de menu_deroulant
+	byte *str_option[3]   ={" _Debut"," _Recherche"," _Aide" };
+
+	resultat_menu=menu_der(6,16,12,5,4,DOUBLE,WHITE,LIGHTRED,DARKGRAY,11,BLACK,RED,str_option);
+
+	bouton=ZERO_BOUTON_APPUYER;
+
+	if (resultat_menu==1) {
+		fin_fichier=0;
+		return (1);
+	}
+	if (resultat_menu==2) {
+		return(recherche());
+	}
+	if (resultat_menu==3) {
+		fenetre_aide();
+	}
+
+	delay(700);
+
+	return (0);
+
+}
+int recherche(void)
+{
+	char ecran[4000]; 	// 4000 = 80 x 25 x 2
+	static char texte_hexa[50];
+	int hx[28]={0};
+
+	int ev_recu=0,c=0;
+
+	gettext(1, 1, 80, 25, ecran); 		// Pour ne pas ˆtre obliger de tout r‚afficher
+	winp(15,5,65,15,BLACK,WHITE,9,"  Rechercher des octets ");
+
+	locatext(18,7,"Entrer votre chaŒne",15+16*9);
+
+	space(18,9,44,0);
+	if (input(20,9,40,texte_hexa,11)>0)	{
+		titre(20,11,YELLOW,1,DARKGRAY,9, "  Hexa  ",0);
+		titre(32,11,YELLOW,1,DARKGRAY,9, "  Ascii  ",0);
+		titre(48,11,15,12,DARKGRAY,9, "  Annuler  ",0);
+		init_souris();
+		do
+		{
+		  ev_recu=bouton_type(20,11,8,'H',1,0);
+		  ev_recu=bouton_type(32,11,8,'A',2,ev_recu);
+		  ev_recu=bouton_type(48,11,11,'N',3,ev_recu);
+		}
+		while(ev_recu==0);
+		cache_souris();
+
+		if (ev_recu==1) { titre(20,11,YELLOW,1,DARKGRAY,9, "  Hexa  ",1);relacher_bsgauche();
+			for(int i=0;i<strlen(texte_hexa);i=i+2) {
+				hx[c++]=hexa(toupper(texte_hexa[i]),toupper(texte_hexa[i+1]));
+			}
+			puttext(1, 1, 80, 25, ecran);
+			return(rechercher_octet(hx,c));
+
+		}
+		if (ev_recu==2) {
+			titre(32,11,YELLOW,1,DARKGRAY,9, "  Ascii  ",1);relacher_bsgauche();
+			for(int z=0;z<strlen(texte_hexa);z++) hx[z]=texte_hexa[z];
+			puttext(1, 1, 80, 25, ecran);
+			return(rechercher_octet(hx,strlen(texte_hexa)));
+		}
+		if (ev_recu==3) {
+			titre(48,11,15,12,DARKGRAY,9, "  Annuler  ",1);relacher_bsgauche();
+			puttext(1, 1, 80, 25, ecran);
+		}
+	}
+	return(0);
+}
+int rechercher_octet(int code[35],int taille)
+{
+	char chaine[39]={0};
+	int comp=0;
+//	long nbr_de_char_lus=0;
+	char ecran[4000]; 	// 4000 = 80 x 25 x 2
+
+	fseek(in,ftell(in)-272,SEEK_SET);
+	nbr_de_char_lus=ftell(in);
+	for (int i=0;i<taille;i++) {
+		chaine[i]=fgetc( in );  // lecture d'un octet
+		nbr_de_char_lus++;
+	}
+	do
+	{
+		for (int p=0;p<taille;p++)	{
+			 if (chaine[p]==code[p])   {
+					comp++;
+			  } else {
+					comp=0;
+			 }
+			 if (comp==taille) { printf("\a");
+				fseek(in,ftell(in)-taille-1,SEEK_SET);
+				for (int n=0;n<280;n++) sauvegarde_octet[n]=0; //sauve 256 octets lus pour la modif
+				nbr_lus_dans_tableau=lire_dans_fichier(272);
+				cadre_OFFSET(PAGE,nom_en_cour);
+				afficher_tableau_octets(nbr_lus_dans_tableau,CONTINUE,ftell(in)-(long)nbr_lus_dans_tableau);
+				return(nbr_lus_dans_tableau);
+			 }
+		}
+		for (int t=0;t<taille;t++)	chaine[t]=chaine[t+1];
+			chaine[taille]=fgetc( in );
+			nbr_de_char_lus++;
+	}
+	while(!feof(in));
+	cache_souris();
+	gettext(1, 1, 80, 25, ecran);
+	cadre_plein(24,7,56,11,0,WHITE,WHITE,1);  // cadre rep
+	locatext(24,7," Fin du fichier retour au debut! ",WHITE+16*LIGHTRED);
+	titre(36,9,YELLOW,1,DARKGRAY,WHITE, " < OK > ",0);
+	bouton_xyl(36,9,8); // Gestion du Bouton OK
+	titre(36,9,YELLOW,1,DARKGRAY,WHITE, " < OK > ",1);
+	cache_souris();
+	puttext(1, 1, 80, 25, ecran);
+	fseek(in,0,SEEK_SET);
+	nbr_de_char_lus=0;
+	nbr_lus_dans_tableau=lire_dans_fichier(272);
+	cadre_OFFSET(0,nom_en_cour);
+	afficher_tableau_octets(nbr_lus_dans_tableau,DEBUT,nbr_de_char_lus-(long)nbr_lus_dans_tableau);
+	return(0);
+
+}
+void menu_exit_option(void)
+{
+	int resultat_menu; // initialise  le resultat de menu_deroulant
+
+	byte *str_exit[3]={" _Annuler "," _Shell"," _Quitter "};
+
+	cache_souris();
+
+	if (valeur_xxreel>67) valeur_xxreel=67;
+	if (valeur_yyreel>20) valeur_yyreel=20;
+
+	resultat_menu=menu_der(valeur_xxreel,valeur_yyreel,11,4,4,DOUBLE,WHITE,LIGHTRED,DARKGRAY,LIGHTCYAN,BLACK,RED,str_exit);
+
+	if (resultat_menu==2)	{
+		command_system();
+	}
+	if (resultat_menu==3) {
+		color(7,0);CLS;printf(" Pcboss par ZeCrusher !!! \n");
+		_setcursortype(_SOLIDCURSOR);
+		END;
+	}
+
+}
+int fenetre_contenu(char nom_fichier[13], int argument,int mode) // retourne si le fichier est OK
+{
+	int fichier_ok=0,touche=0,position_options=0,readwrite=0;
+	char ecran[4000]; 	// 4000 = 80 x 25 x 2
+	char lecture[1000]; 	// 4000 = 80 x 25 x 2
+	char texte[132]={0};
+	int sub=0,choix_menu=1,x=0,y=0;              // choix de la touche de la souris pour la modification
+	int position_tableau=0,etat=-1;
+	char longueur_chaine=0;
+	gettext(1, 1, 80, 25, ecran); 		// Pour ne pas ˆtre obliger de tout r‚afficher
+	nbr_lus_dans_tableau=0;
+		do
+		{
+			fichier_ok=ouverture_fichier(nom_fichier);
+			if (fichier_ok==1) {
+				readwrite=Erreur_sur_fichier();  // affiche le cadre ERR
+				if ((readwrite==22)&&(mode==1)) {
+					fond(1);puttext(1, 1, 80, 25, ecran);
+					gotoxy(1,25);color(11,0);printf(" Fin par l'utilisateur ... \n");
+					printf(" PCBOSS Par TSAKIROPOULOS SERGE !!! \n");
+					_setcursortype(_SOLIDCURSOR);
+					color(7,0);exit(EXIT_FAILURE);
+				}
+				if ((readwrite==22)&&(mode==0)) {
+					return(1);
+				}
+				else {
+					if (mode==0)
+						_dos_setfileattr(nom_fichier,FA_NORMAL);
+				}
+			}
+		  }
+		while((fichier_ok==1));
+
+	colorxy(1,1,WHITE,LIGHTGRAY);
+
+	if (mode==0)
+		for(int i1=0;i1<3;i1++)
+			for(int i2=0;i2<5;i2++)
+				cputs ("ÕÕÕÕÕÕÕÕÕÕÕÕÕÕÕÕ");
+
+	cadre_OFFSET(0,nom_fichier);
+
+	cache_souris();				// montre la souris pour la modification
+	nbr_lus_dans_tableau=lire_dans_fichier(272);	
+	afficher_tableau_octets(nbr_lus_dans_tableau,CONTINUE,nbr_de_char_lus-(long)nbr_lus_dans_tableau);
+	choix_menu=0;
+	color(15,4);
+	gotoxy(11,4);cprintf("%02X",sauvegarde_octet[0]);
+
+	do
+	{
+		montre_souris();
+		bouton=ZERO_BOUTON_APPUYER; // indique qu'aucun bouton n'est appuyer
+		etat_souris();              // Recupere les X et Y + le Bouton
+		valeur_xxreel=((posx/8)+1);
+		valeur_yyreel=((posy/8)+1);
+		gotoxy(11+x,4+y);
+
+		if (kbhit())
+		{
+			touche=toupper(getch());
+			if (touche=='M')   {
+				sauver_hexa(nbr_de_char_lus,(long) nbr_lus_dans_tableau);
+				printf("\a");
+			}
+
+			if (touche=='T') {
+				fclose(in);
+				cache_souris();
+				puttext(1, 1, 80, 25, ecran);
+				if (argument==2) {
+					CLS;printf(" Fin de l'‚diteur Hexa_ PCBOSS ");
+					_setcursortype(_SOLIDCURSOR);
+					exit(0);
+				}
+
+				return (TERMINER);
+			}
+
+			if ((touche>='A')&&(touche<='F')||(touche>='0')&&(touche<='9')) {
+				code_hexa(11+x,4+y,touche,position_tableau);
+				touche=-1;
+			}
+			if (touche==27)			{
+				fclose(in);cache_souris();puttext(1, 1, 80, 25, ecran);montre_souris();
+				if (argument==2)	{
+					CLS;printf(" Fin de l'‚diteur Hexa_ PCBOSS ");
+					_setcursortype(_SOLIDCURSOR);
+					exit(0);
+				}
+				return 0;
+			}
+			if (touche=='O')			{
+				cache_souris();
+				position_options=fenetre_options();
+				if (position_options==1)
+				{
+					locatext(6,21,"                                            ",BLACK+16*CYAN);
+					nbr_de_char_lus=0;rewind(in);// delay(300);
+					nbr_lus_dans_tableau=lire_dans_fichier(272);
+					afficher_tableau_octets(nbr_lus_dans_tableau,DEBUT,nbr_de_char_lus-(long)nbr_lus_dans_tableau);
+				}
+
+			}
+			if ((touche==' ')&&(fin_fichier==0)) // Si fin_fichier == 1 fin du fichier atteint
+			{
+				color(0,3);window(3,4,77,21);
+				clrscr();window(1,1,80,25);
+
+				locatext(40,2,nom_fichier,WHITE+16*1);
+				cache_souris();
+				nbr_lus_dans_tableau=lire_dans_fichier(272);
+				afficher_tableau_octets(nbr_lus_dans_tableau,CONTINUE,nbr_de_char_lus-(long)nbr_lus_dans_tableau);
+				montre_souris();
+				color(15,4);
+				gotoxy(11,4);cprintf("%02X",sauvegarde_octet[0]);
+
+			}
+
+			if ((touche==0)||(touche==-1)) {
+				if (touche!=-1) touche=toupper(getch());
+				if ((touche=='M')||(touche==-1)) {	x=x+3;if ((x>15*3)&&(y!=16)) { x=0;touche='P'; }
+					sub=((x/3)+1)+(16*y)-1;
+					if (sub>nbr_lus_dans_tableau-1) x=x-3; else position_tableau=sub;
+				}
+				if (touche=='K') {	x=x-3;if (x<0) x=0;
+					sub=((x/3)+1)+(16*y)-1;
+					if (sub>nbr_lus_dans_tableau)	x=x+3; else	position_tableau=sub;
+				}
+				if (touche=='P') {	y++;if (y>16) y=16;
+					sub=((x/3)+1)+(16*y)-1;
+					if (sub>nbr_lus_dans_tableau-1) y--; else position_tableau=sub;
+				}
+				if (touche=='H') {	y--;if (y<0) y=0;
+					sub=((x/3)+1)+(16*y)-1;
+					if (sub>nbr_lus_dans_tableau) y++; else position_tableau=sub;
+				}
+				_setcursortype(_NOCURSOR);
+				afficher_tableau_octets(nbr_lus_dans_tableau,CONTINUE,nbr_de_char_lus-(long)nbr_lus_dans_tableau);
+				gotoxy(11+x,4+y);color(15,4);cprintf("%02X",sauvegarde_octet[position_tableau]);
+				gotoxy(60+(x/3),4+y);color(14,1);cprintf("%c",sauvegarde_octet[position_tableau]);
+				touche=0;
+			}
+		}
+
+
+		if ((bouton==BOUTON_GAUCHE)&&(valeur_yyreel==22)&&(valeur_xxreel<66)&&(valeur_xxreel>50)) // x Max = 80
+		{
+			fclose(in);	cache_souris();
+			puttext(1, 1, 80, 25, ecran);
+			if (argument==2) {
+				CLS;printf(" PCBOSS Ver 1.00  \nTSK_\n");
+				_setcursortype(_NORMALCURSOR);
+				exit(0);
+			}
+			return(0);
+		}
+
+		sub=(valeur_xxreel-58)+(16*(valeur_yyreel-4))-2;
+
+		if ((bouton==BOUTON_DROIT)&&(valeur_yyreel<21)&&(valeur_yyreel>3)&&(valeur_xxreel<76)&&(valeur_xxreel>59)&&(sub<nbr_lus_dans_tableau)) // x Max = 80
+		{
+			cache_souris();
+			gettext(14, 7, 68, 12,lecture);
+			cadre_plein(14,7,66,11,0,WHITE,WHITE,1);  // cadre rep
+			space(14,7,53,5+16*5);
+			locatext(24,7,"Entrez votre chaŒne ",WHITE+16*5);
+			space(16,9,49,0);
+			longueur_chaine=input(17,9,48,texte,11);
+			puttext(14,7,68,12,lecture);
+			if (longueur_chaine>(nbr_lus_dans_tableau-sub)) {
+				printf("\a");longueur_chaine=nbr_lus_dans_tableau-sub;
+			}
+			for (int e=0;e<longueur_chaine;e++)
+				sauvegarde_octet[sub+e]=texte[e];
+			afficher_tableau_octets(nbr_lus_dans_tableau,CONTINUE,nbr_de_char_lus-(long)nbr_lus_dans_tableau);
+			montre_souris();
+		}
+
+		if ((bouton==BOUTON_GAUCHE)&&(valeur_yyreel<21)&&(valeur_yyreel>3)&&(valeur_xxreel<76)&&(valeur_xxreel>59)) // x Max = 80
+		{
+			sub=(valeur_xxreel-58)+(16*(valeur_yyreel-4))-2;
+
+			if ((sub<nbr_lus_dans_tableau)&&(etat!=sub)) {
+				position_tableau=sub;y=valeur_yyreel-4;x=0;
+				for (int r=0;r<position_tableau;r++)	{
+					x=x+3; if (x>15*3) x=0;
+				}
+				curseur(NON);
+				afficher_tableau_octets(nbr_lus_dans_tableau,CONTINUE,nbr_de_char_lus-(long)nbr_lus_dans_tableau);
+				cache_souris();
+				gotoxy(11+x,4+y);color(15,4);cprintf("%02X",sauvegarde_octet[position_tableau]);
+				gotoxy(60+(x/3),4+y);color(14,1);cprintf("%c",sauvegarde_octet[position_tableau]);
+				montre_souris();
+			}
+			etat=sub;
+		}
+		if ((bouton==BOUTON_GAUCHE)&&(valeur_yyreel<21)&&(valeur_yyreel>3)&&(valeur_xxreel<58)&&(valeur_xxreel>10)) // x Max = 80
+		{
+			sub=(((valeur_xxreel-11)/3)+1)+(16*(valeur_yyreel-4))-1;
+			if ((sub<nbr_lus_dans_tableau)&&(etat!=sub)) {
+				position_tableau=sub;
+				y=valeur_yyreel-4;x=0;
+				for (int r=0;r<position_tableau;r++)	{
+					x=x+3;if (x>15*3) x=0;
+				}
+				curseur(NON);
+				afficher_tableau_octets(nbr_lus_dans_tableau,CONTINUE,nbr_de_char_lus-(long)nbr_lus_dans_tableau);
+				cache_souris();
+				gotoxy(11+x,4+y);
+				color(15,4);
+				cprintf("%02X",sauvegarde_octet[position_tableau]);
+				gotoxy(60+(x/3),4+y);color(14,1);
+				cprintf("%c",sauvegarde_octet[position_tableau]);
+				montre_souris();
+
+			}
+			etat=sub;
+		}
+		if ((bouton==BOUTON_GAUCHE)&&(valeur_yyreel==22)&&(valeur_xxreel<46)&&(valeur_xxreel>30)&&(fin_fichier==0)) // x Max = 80
+		{
+			cache_souris();
+			color(0,3);window(3,4,77,21);clrscr();window(1,1,80,25);
+			locatext(40,2,nom_fichier,WHITE+16*1);
+			nbr_lus_dans_tableau=lire_dans_fichier(272);
+			afficher_tableau_octets(nbr_lus_dans_tableau,CONTINUE,nbr_de_char_lus-(long)nbr_lus_dans_tableau);
+			colorxy(11,4,15,4);cprintf("%02X",sauvegarde_octet[0]);
+		}
+
+		if ((bouton==BOUTON_GAUCHE)&&(valeur_yyreel==22)&&(valeur_xxreel<18)&&(valeur_xxreel>8) ) // x Max = 80
+		{
+			cache_souris();
+			relacher_bsgauche();
+			position_options=fenetre_options();  // Indique si le fichier est repositionner au debut
+			  if (position_options==1)
+			  {	locatext(6,21,"                                           ",BLACK+16*CYAN); // inscrit le nom du fichier en train d'ˆtre visualiser
+					nbr_de_char_lus=0;fseek(in,0,SEEK_SET);
+					nbr_lus_dans_tableau=lire_dans_fichier(272);
+					afficher_tableau_octets(nbr_lus_dans_tableau,DEBUT,nbr_de_char_lus-(long) nbr_lus_dans_tableau);
+			}
+		}
+	}
+	while(choix_menu==0);
+   choix_menu=0;
+	fclose(in);
+	cache_souris();
+	puttext(1, 1, 80, 25, ecran);
+   return 0;
+}
+
+
+void cadre_OFFSET(int mode,char *nom)
+{
+	cadre_plein(2,2,78,22,0,DARKGRAY,CYAN,1);	// affiche le cadre de presentation
+	gotoxy(16,2);color(14,1);
+	strcpy(nom_en_cour,nom);
+	cprintf(" Affichage du contenu > %s",nom_en_cour);
+
+	color(YELLOW,CYAN); 			// couleur du texte OFFSET
+	gotoxy(3,3);cprintf(" OFFSET");
+	space(1,24,80,1+16*1);
+	space(1,25,79,BLACK+16*LIGHTGRAY); // inscrit le nom du fichier en train d'ˆtre visualiser
+
+	if (mode==POURSUITE)
+	{
+		locatext(50,22,"´  Poursuivre   Ã",DARKGRAY+16*CYAN);
+		locatext(51,22,"   Poursuivre  ",WHITE+16*LIGHTRED);
+		locatext(30,22,"´   Terminer   Ã",DARKGRAY+16*CYAN);
+		locatext(31,22,"   Terminer   ",WHITE+16*LIGHTRED);
+
+	}
+	if (mode==PAGE)	{
+		 locatext(7,22,"´  Options  Ã",DARKGRAY+16*CYAN);
+		 locatext(30,22,"´ Page suivante Ã",DARKGRAY+16*CYAN);
+		 locatext(50,22,"´ Terminer Edit Ã",DARKGRAY+16*CYAN);
+		 locatext(8,22,"  Options  ",WHITE+16*BLUE);
+		 locatext(31,22," Page suivante ",WHITE+16*BLUE);
+		 locatext(51,22," Terminer Edit ",WHITE+16*LIGHTRED);
+		 locatext(52,22,"T",YELLOW+16*LIGHTRED);	locatext(10,22,"O",YELLOW+16*BLUE);
+	}
+	locatext(40,2,nom,WHITE+16*1);  // inscrit le nom du fichier en train d'ˆtre visualiser
+	locatext(3,25,"M pour la mise … jour ³ ",0+16*7);
+
+}
+int fenetre_contenu_ascii(char nom_fichier[13])
+{
+	char ecran[4000],touche=0;
+	int nbr_ligne=0,nbr_col=0;
+	long positionnement=0,posi=0;
+	char car=0;
+	gettext(1,1,80,25,ecran);
+
+	CLS;
+	strcpy(nom_en_cour,nom_fichier);
+
+	if ((in = fopen(nom_fichier, "rb"))== NULL)
+	{
+	   fprintf(stderr,"Impossible d'ouvrir le fichier");
+	   getch();
+	   puttext(1,1,80,25,ecran);
+	   return (1);
+	}
+	space(1,1,80,1+16*1);
+	do
+	{
+		color(7,0);
+		car=fgetc(in);positionnement++;
+		nbr_col++;
+
+		  if (nbr_col>79) { nbr_ligne++;nbr_col=0; }
+		  if (car==13)  {
+			  locatcar(nbr_col,nbr_ligne+2,car,7);
+			  nbr_ligne++;
+			  nbr_col=0;
+		  }
+		  else
+		  {
+			locatcar(nbr_col,nbr_ligne+2,car,7);
+		  }
+		touche=0;
+
+		if (nbr_ligne>22)
+		{   posi=positionnement;
+			touche=toupper(getch());
+			if (touche==0) {
+				touche=toupper(getch());
+				if (touche=='H') {
+					if (positionnement>0)
+						fseek(in,positionnement-posi,SEEK_SET);
+						positionnement-=posi;
+				}
+			 }
+			posi=positionnement;
+			nbr_ligne=0;
+			clrscr();
+			space(1,1,80,1+16*1);
+		}
+
+	}
+	while (!feof(in)&&(touche!=81));
+	gotoxy(1,1);printf(" Fin du fichier ");
+	getch();
+	puttext(1,1,80,25,ecran);
+	return (0);
+
+}
+
+void fenetre_aide()
+{
+	char ecran[4000];
+
+	gettext(1, 1, 80, 25, ecran);
+	cadre_plein(7,7,73,21,0,CYAN,BLUE,1);
+	titre(28,8,YELLOW,CYAN,8,BLUE, " Aide ",0);
+	locatext(11,10,"La premiere colonne de l'affichage hexadecimal ne peut ˆtre",WHITE+16*BLUE);
+	locatext(10,11,"modifi‚e : elle fournit un num‚ro de r‚f‚rence de l'octet en",WHITE+16*BLUE);
+	locatext(10,12,"commen‡ant par 0.La zone principale est constitu‚e de champs",WHITE+16*BLUE);
+	locatext(10,13,"de 2 caractŠres qui represente un octet chacun . La derniere",WHITE+16*BLUE);
+	locatext(10,14,"colonne pr‚sente une conversion en Ascii des octets (le cas   ",WHITE+16*BLUE);
+	locatext(10,15,"‚ch‚ant ). Ces 2 zones peuvent ˆtre modifi‚es .",WHITE+16*BLUE);
+	getch();
+	puttext(1,1,80,25,ecran);
+	montre_souris();
+
+}
+int Erreur_sur_fichier()
+{
+    int err=0;
+	err=message_err(FICHIERR);
+	return(err);
+}
+int affichage_str(int code_ascii_)
+{
+	int tab=0;
+	int color_car=0;
+
+	for (int i=0;i<18;i++)
+	{
+		for (int j=0;j<16;j++)
+		{
+			if (sauvegarde_octet[tab]<33)		{
+				color_car=YELLOW+16*CYAN;
+			}
+				else		{
+				color_car=BLACK+16*CYAN;
+			} // code ASCII inferieur 33
+
+
+			if ((sauvegarde_octet[tab]<91)&&(sauvegarde_octet[tab]>64)||(sauvegarde_octet[tab]<123)&&(sauvegarde_octet[tab]>96)) 	{
+				color_car=BLUE+16*CYAN;
+			}
+			else		{
+				color_car=BLACK+16*CYAN;
+			}
+
+			locatcar(60+j,4+i,sauvegarde_octet[tab],color_car);
+
+			color_car=0;
+
+			if (tab==code_ascii_)
+				return(0);
+			tab++;
+		}
+	}
+	return(0);
+
+}
+
+int ouverture_fichier(char texte_fichier[100])
+{
+	nbr_de_char_lus=0;  // Repositionne le nombre de char lus … zero
+	if ((in = fopen(texte_fichier, "r+b")) == NULL) // mode de Lecture et ecriture  binaire
+	{
+			return( 1 );
+	}
+
+	fseek(in,0,SEEK_SET);			// Repositionement au debut du fichier
+	return (0);
+}
+
+int lire_dans_fichier(int nbr_octet)
+{
+	int boucle=0,octet=0;
+
+	do
+	{
+		octet = fgetc( in );  // lecture d'un octet                           ÚÄÄ Coordonn‚e + 3
+		sauvegarde_octet[boucle]=octet; // sauve tout les octets de la page active, char du fichier
+		boucle++;		   // par groupe de 272 octets
+	}
+	while (!feof(in)&&(boucle<nbr_octet)); //272));
+
+	if (boucle<nbr_octet) {
+		fin_fichier=1;
+		boucle--;
+	}
+	nbr_de_char_lus+=boucle; // Incremente le nombre de char lu dans le fichier
+	fseek(in,nbr_de_char_lus,SEEK_SET);
+
+	return (boucle); // return le nombre de char lu
+}
+void afficher_tableau_octets(int nbr_element_tableau,int mode,long offset)
+{
+	int element_tableau=0,affiche_ascii=0,color_char=0,fin_affiche=0,x=0,y=0;
+	static long ofst=0;
+	byte octet=0;
+
+	if (mode==DEBUT)
+		ofst=0;
+	 else
+		ofst=(int)(offset/16);
+
+	do
+	{
+		octet=sauvegarde_octet[element_tableau];
+
+		if ((octet<91)&&(octet>64)||(octet<123)&&(octet>96))		{
+			color(BLUE,CYAN);color_char=BLUE+16*CYAN;
+		}
+		else	{
+			color(BLACK,CYAN);color_char=BLACK+16*CYAN;
+		}
+
+		gotoxy(y+11,x+4);textattr(color_char);
+		cprintf("%02X",sauvegarde_octet[element_tableau]); // affiche les octets en Hexadecimal
+
+		if (octet!=7) {// 7 -> BEEP
+			locatcar(60+affiche_ascii,4+x,octet,color_char); // Positionne les CODES ASCII
+			color_char=0; // Ecrit les codes ASCII qui correspondent au code HEXA
+		}
+		else
+		{	locatcar(60+affiche_ascii,4+x,' ',color_char); // Positionne les CODES ASCII
+		}
+		color(WHITE,CYAN);gotoxy(4,4+x);cprintf("%04X",(int)  (ofst));
+
+		element_tableau++;
+		affiche_ascii++;
+
+		if (affiche_ascii>15)	{
+			affiche_ascii=0; ofst=ofst+16;
+		}
+
+		y=y+3;
+
+		if (y>(15*3+1))	{
+			y=0;x++;
+		}
+			if (x>17) {
+				fin_affiche=1;
+			}
+
+			if (element_tableau>(nbr_element_tableau-1)) {
+				 fin_affiche=1;
+			}
+
+		}
+		while (fin_affiche==0);
+
+}
+void affiche_pourcent_disk(float taille_disk)
+{
+	locatext(1,25," Reste ",WHITE+16*RED);
+	locatext(10,25,"þþþþþþþþþþþþþþþþþþþþ",1+16*7);
+	gotoxy(10,25);
+
+	for (int c=0;c<(20- (int ( (taille_disk*20)/100)));c++)		{
+			color(12,7);cprintf("þ");
+	}
+	 color (0,7);gotoxy(32,25);cprintf("%5.2f %% ÑÒú d'espace libre              ",taille_disk);
+}
+void far handler(unsigned deverr, unsigned errval, unsigned far *devhdr)
+{
+  int errorno;
+
+  cache_souris();
+  gettext(1, 1, 80, 25,sauve_error);
+  fenetre(8,10,52,16,LIGHTRED,WHITE,WHITE,"Erreur detect‚e");
+
+  if (deverr & 0x8000)  {
+	 error_win();
+	 _hardretn(5);
+  }
+
+  errorno = errval & 0x00FF;
+
+  locatext(15,12,err_msg[errorno],BLACK+16*WHITE);
+
+  titre(11,14,YELLOW,1,DARKGRAY,WHITE, " Fatal ",0);
+  titre(26,14,YELLOW,1,DARKGRAY,WHITE, " Retry ",0);
+  titre(41,14,YELLOW,1,DARKGRAY,WHITE, " Ignore ",0);
+
+  _hardresume(error_win());
+
+}
+int error_win()
+{
+	int retval;
+	int ev_recu=0;
+
+	init_souris();
+
+	montre_souris();
+
+	do
+	{
+	  ev_recu=bouton_type(11,14,7,'A',1,0);
+	  ev_recu=bouton_type(26,14,7,'R',2,ev_recu);
+	  ev_recu=bouton_type(41,14,8,'I',3,ev_recu);
+	}
+	while(ev_recu==0);
+
+	cache_souris();
+
+	if (ev_recu==1) {
+
+		titre(11,14,YELLOW,1,DARKGRAY,WHITE, " Fatal ",1);
+		retval=_HARDERR_FAIL;
+	}
+	if (ev_recu==2) {
+		titre(26,14,YELLOW,1,DARKGRAY,WHITE, " Retry ",1);
+		retval =_HARDERR_RETRY;
+	}
+	if (ev_recu==3) {
+		titre(41,14,YELLOW,1,DARKGRAY,WHITE, " Ignore ",1);
+		retval =_HARDERR_IGNORE;
+	}
+	cache_souris();
+
+	puttext(1,1,80,25,sauve_error);
+
+	montre_souris();
+
+	return(retval);
+
+}
+void rep_cour()
+{
+	char repertoire_en_cour[MAXPATH];
+
+		locatext(1,24,"Repertoire >                                                                  ",31);
+
+		getcwd(repertoire_en_cour,MAXPATH); // Lit ici le nom du repertoire en cour
+
+		locatext(13,24,repertoire_en_cour,30);
+
+}
+void code_hexa(int x,int y,char touche,int position)
+{
+	char touche2=0;
+
+	colorxy(x,y,15,0);cprintf("%02X",sauvegarde_octet[position]);
+	colorxy(x,y,14,1);cprintf("%1c",touche);
+
+	do
+	{
+		touche2=toupper(getch());
+	}
+	while (((touche2<65)||(touche2>70))&&((touche2<48)||(touche2>57)));
+
+	colorxy(x+1,y,14,1);cprintf("%1c",touche2);
+
+	sauvegarde_octet[position]=hexa(touche,touche2);  // Je fais convertir par ma belle fonction les hexadecimals en (int) ASCII ( en gros c'est ‡a )
+	colorxy(x,y,4,3);
+	cprintf("%02X",sauvegarde_octet[position]);
+
+}
+void sauver_hexa(long pointeur,long nombre_lue)
+{
+	ecrire_hexa(pointeur,nombre_lue);
+}
+
+void ecrire_hexa(long pointeur,long nombre_lue)
+{
+	fseek(in,(pointeur-nombre_lue),SEEK_SET); // Positionne le pointeur du fichier au debut du tableau
+
+	for (int i=0;i<nombre_lue;i++) // boucle pour la sauvegarde
+		fputc(sauvegarde_octet[i],in); //ecrit les octets
+
+	fseek(in,pointeur,SEEK_SET); // repositionne le pointeur sur le debut du fichier + posi
+
+}
+void screen(void)
+{
+	union REGS _r_in,_r_out;
+
+	_r_in.h.ah=0x00;
+	_r_in.h.al=0x03;
+	int86(VIDEO,&_r_in,&_r_out); 	// Execution de l'interuption logiciel VIDEO
+
+}
+int fenetre(int afficher)
+{
+	 return( message_err(afficher) ) ;
+}
+
+void supprimer_fichier(void)
+{
+
+// si le bouton de la fenetre de la suppression est sur continuer
+// alors on efface les fichiers sinon on retour au debut
+
+		if (fenetre(SUPPRIMER)==SUPPRIMER)
+		{
+			for (int es=0;es<Fichier_max;es++)
+			{
+				if (fichier_[es].marque_==ON)
+				{
+					_dos_setfileattr(num_fichier[es].files,FA_NORMAL);
+					unlink(num_fichier[es].files);
+				}
+			}
+			lire_lecteur(FICH);
+			place_f=vers_bas=0;
+
+			for (int d=0;d<Fichier_max;d++)
+					fichier_[d].marque_=OFF;
+
+			fenetre_fichier();
+			aff_nbr_fichier_rep();
+		}
+		affiche_pourcent_disk(espace_disk_libre_pourcent(0));
+}
+void command_system()
+{
+	char ecran[4000];
+
+	cache_souris();
+	gettext(1, 1, 80, 25, ecran); 		// Pour ne pas ˆtre obliger de tout r‚afficher
+	color(7,0);clrscr();fond(1);
+	printf(" Exit pour revenir … PCBOSS \n");
+	_setcursortype(_NORMALCURSOR);
+	system("");
+	_setcursortype(_NOCURSOR);
+	place_r=place_f=vers_bas=0;
+	screen();
+
+	for (int d=0;d<Fichier_max;d++) fichier_[d].marque_=OFF;
+
+	init_mem_fichier();  // Vide tous les noms des fichiers de la memoire
+	init_mem_repertoire();  // Vide tous les noms des repertoire de la memoire
+
+	debut_traitement(10,10); // Affiche le mot PAUSE dans un cadre
+		nbr_fichier=recherche_fichier("*.*");
+		nbr_repertoire=recherche_repertoire("\\");
+	fin_traitement(); // Effacement du mot pause
+
+	table_ascii();
+	charger_table("c:\\tsk\\long.als");    // Charge la police de caractere ALES
+	fond(0);
+	puttext(1, 1, 80, 25, ecran);
+
+	fenetre_repertoire();
+	fenetre_fichier();
+	affiche_pourcent_disk(espace_disk_libre_pourcent(0));// retourne l'espace disk en pourcentage
+	aff_nbr_fichier_rep();
+	montre_souris();
+}
+void fenetre_files(int color)
+{
+	cadre_plein(fenfix-1,5,78,22,BARRE,color,BLUE,1); // cadre fichier
+	fenetre_fichier();
+	ass_vert(28,6,14,nbr_repertoire,place_r,3+16*1);
+	ass_vert(78,6,14,nbr_fichier,place_f,3+16*1);
+
+}
+void fenetre_directory(int color)
+{
+	cadre_plein(2,5,fenfix-3,22,BARRE,color,BLUE,1);  // cadre rep
+	// fleche pour les fichiers
+	locatext(4,22,"Ý      Þ",color+16*BLUE);
+	locatext(5,22,"Racine",11+16*BLUE);
+	fenetre_repertoire();
+	ass_vert(28,6,14,nbr_repertoire,place_r,3+16*1);
+	ass_vert(78,6,14,nbr_fichier,place_f,3+16*1);
+
+}
+void hd_space(void)
+{
+	char ecran[4000];
+	int nbr_lecteur=0;
+	int gdisk=0;
+
+	gettext(1, 1, 80, 25, ecran); 		// Pour ne pas ˆtre obliger de tout r‚afficher
+	cadre_plein(4,4,76,21,0,7,7,1);
+	space(4,4,73,12+16*8);
+//	space(4,5,73,12+16*9);
+
+	locatext(7,4,"Espace disponible des disques",15+16*8);
+	locatext(6,5,"Graphique   Drv      %      libre        cluster",0+16*7);
+	nbr_lecteur=recherche_nbr_lecteur();
+
+	gdisk=getdisk(); /* renvoie le num‚ro du disque actif (0 = A, 1 = B, 2 = C, etc.) */
+
+
+	for (int i=0;i<nbr_lecteur-2;i++)
+	{
+		printf("%d",i);
+		printf("%d",nbr_lecteur);
+		locatext(5,7+i,"þþþþþþþþþþ",15+16*7);
+		gotoxy(5,7+i);
+		for (int c=0;c<(10-(int ( (espace_disk_libre_pourcent(i+3)*10)/100)));c++)		{
+			 color(1,7);cprintf("þ");
+		}
+		color(15,7);
+		gotoxy(19,7+i);cprintf("%c:",67+i);
+		color(0,7);
+		gotoxy(22,7+i);
+		cprintf("  %5.2f",espace_disk_libre_pourcent(i+3));
+		gotoxy(30,7+i);cprintf("%%");color(0,7);
+		gotoxy(33,7+i);cprintf("%6ld Mo",espace_disk_libre(i+3)/1048576L);
+		cluster=taille_cluster();
+		gotoxy(46,7+i);color(0,7);cprintf("%5d oct",cluster);
+		cluster=0;
+		setdisk(i+3);
+	}
+
+	titre_bouton(36,20," < OK > ",YELLOW,BLUE,8,7);
+
+	setdisk(gdisk);
+
+	cache_souris();
+	puttext(1, 1, 80, 25, ecran);
+	montre_souris();
+
+}
+int titre_bouton(int x,int y,char texte[60],char color,char fond,char ombre,char fond_cadre)
+{
+	titre(x,y,color,fond,ombre,fond_cadre, " < OK > ",0);
+	bouton_xyl(x,y,strlen(texte)); // Gestion du Bouton OK
+	titre(x,y,color,fond,ombre,fond_cadre, " < OK > ",1);
+	relacher_bsgauche();
+ return(0);
+}
+int check_mscdex(void)
+{
+  union REGS reg;
+
+  reg.x.ax=0x1500;
+  reg.x.bx=0;
+  int86(0x2f, &reg, &reg);
+  if (!reg.x.bx)
+	 return 0;
+  else {
+	 return 1;
+  }
+}
+int compter_fichier(void)
+{
+	int cpt=0;
+	unsigned long taille=0;
+
+	for (int i=0;i<Fichier_max;i++) {
+		if (fichier_[i].marque_==ON) {
+			cpt++;taille+=num_fichier[i].taille;
+		}
+	}
+	color(15,1);
+	gotoxy(73,3);cprintf("       ");
+	gotoxy(73,3);cprintf("%5.2f",(float)taille/1048576L);
+
+	return(cpt);
+}
+void erreur_system(void)
+{
+	char buffer[4096];
+
+	cache_souris();
+
+	gettext(1, 1, 80, 25, buffer);
+	cadre_plein(24,7,56,11,0, 7  , 7   ,1);  // cadre rep
+	locatext(24,7," Erreur lors du lancement ....   ",LIGHTRED+16*WHITE);
+	titre(36,9,15,RED,DARKGRAY,7, "    OK    ",0);
+	montre_souris();
+	bouton_xyl(36,9,10); // Gestion du Bouton OK
+	titre(36,9,15,RED,DARKGRAY,7,"    OK    ",1);
+	cache_souris();
+	puttext(1, 1, 80, 25, buffer);
+
+}
